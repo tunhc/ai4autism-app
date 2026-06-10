@@ -8,7 +8,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  View,
   Image,
   Modal,
   Alert,
