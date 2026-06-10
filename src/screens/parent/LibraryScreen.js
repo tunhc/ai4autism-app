@@ -30,7 +30,7 @@ function VideoCard({ video, onViewAnalysis, onPlayVideo, onDeleteVideo }) {
   const roleLabel = video.uploaded_by_role === 'teacher' ? 'Giáo viên' : 'Phụ huynh';
   const roleBg = video.uploaded_by_role === 'teacher' ? colors.secondaryBg : colors.primaryBg;
   const roleColor = video.uploaded_by_role === 'teacher' ? colors.secondaryDark : colors.primaryDark;
-  const duration = video.duration_seconds ? `${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, '0')}` : '--';
+  const duration = video.duration_seconds ? `${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, '0')}` : null;
   return (
     <View style={st.videoCard}>
       <TouchableOpacity 
@@ -50,7 +50,7 @@ function VideoCard({ video, onViewAnalysis, onPlayVideo, onDeleteVideo }) {
         ) : (
           <Text style={{ fontSize: 28 }}>🎬</Text>
         )}
-        {!isProcessing && (
+        {!isProcessing && duration && (
           <View style={st.videoDurationBadge}>
             <Text style={st.videoDurationText}>{duration}</Text>
           </View>

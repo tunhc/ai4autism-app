@@ -284,7 +284,8 @@ export function normalizeVideoRecord(video) {
 
   let thumbnailUrl = video?.thumbnail_url || null;
   if (!thumbnailUrl && playbackUrl && playbackUrl.includes('.b-cdn.net')) {
-    thumbnailUrl = playbackUrl.replace(/play_.*?\.mp4.*$/, 'thumbnail.jpg');
+    // Bunny Stream typically has /play_....mp4 or /playlist.m3u8
+    thumbnailUrl = playbackUrl.replace(/(play_.*?\.mp4|playlist\.m3u8).*$/, 'thumbnail.jpg');
   }
 
   return {

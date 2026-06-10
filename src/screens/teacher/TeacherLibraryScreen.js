@@ -8,6 +8,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  View,
+  Image,
   Modal,
   Alert,
   Platform
@@ -66,7 +68,7 @@ function VideoCard({ video, onViewAnalysis, onDeleteVideo }) {
   const roleLabel = video.uploaded_by_role === 'teacher' ? 'Cô giáo' : 'Phụ huynh';
   const roleBg = video.uploaded_by_role === 'teacher' ? colors.secondaryBg : colors.primaryBg;
   const roleColor = video.uploaded_by_role === 'teacher' ? colors.secondaryDark : colors.primaryDark;
-  const duration = video.duration_seconds ? `${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, '0')}` : '--';
+  const duration = video.duration_seconds ? `${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, '0')}` : null;
 
   return (
     <View style={st.videoCard}>
@@ -76,11 +78,19 @@ function VideoCard({ video, onViewAnalysis, onDeleteVideo }) {
         onPress={() => !isProcessing && video.playback_url && onViewAnalysis('play', video)}
         activeOpacity={isProcessing ? 1 : 0.8}
       >
-        {isProcessing
-          ? <ActivityIndicator size="small" color={colors.secondary} />
-          : <Text style={{ fontSize: 28 }}>🎬</Text>
-        }
-        {!isProcessing && (
+        {isProcessing ? (
+          <ActivityIndicator size="small" color={colors.secondary} />
+        ) : video.thumbnail_url ? (
+          <>
+            <Image source={{ uri: video.thumbnail_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <View style={{ position: 'absolute', backgroundColor: 'rgba(0,0,0,0.3)', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 24 }}>▶️</Text>
+            </View>
+          </>
+        ) : (
+          <Text style={{ fontSize: 28 }}>🎬</Text>
+        )}
+        {!isProcessing && duration && (
           <View style={st.videoDurationBadge}>
             <Text style={st.videoDurationText}>{duration}</Text>
           </View>
