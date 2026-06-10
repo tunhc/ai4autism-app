@@ -35,7 +35,7 @@ export default function RootNavigator() {
         ) : !profileComplete ? (
           // Đã đăng nhập nhưng chưa hoàn thiện hồ sơ — bắt buộc
           <Stack.Screen name="ProfileCompletion" component={ProfileCompletionScreen} />
-        ) : profile?.role === 'teacher' || profile?.role === 'specialist' || profile?.role === 'admin' ? (
+        ) : profile?.role === 'teacher' || profile?.role === 'specialist' ? (
           // Giáo viên / Chuyên gia
           <Stack.Screen name="TeacherApp" component={TeacherNavigator} />
         ) : (

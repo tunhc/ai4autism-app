@@ -140,7 +140,7 @@ serve(async (req) => {
     const openai = new OpenAI({ apiKey: openaiKey });
     let imageBase64: string | null = null;
 
-    // ── Try images.edit with source photo (gpt-image-1 uses it as reference) ─
+    // ── Try images.edit with source photo (dall-e-2 uses it as reference) ─
     try {
       const srcRes = await fetch(source_avatar_url);
       if (srcRes.ok) {
@@ -148,14 +148,14 @@ serve(async (req) => {
         // Convert to PNG blob (required by images.edit)
         const srcFile = new File([srcBlob], 'source.png', { type: 'image/png' });
         const edited = await openai.images.edit({
-          model: 'gpt-image-1',
+          model: 'dall-e-2',
           image: srcFile,
           prompt,
           size: '1024x1024',
           n: 1,
+          response_format: 'b64_json',
         });
-        // gpt-image-1 returns b64_json by default
-        imageBase64 = (edited.data[0] as { b64_json?: string }).b64_json ?? null;
+        imageBase64 = edited.data[0].b64_json ?? null;
         console.log('[avatar] images.edit succeeded');
       }
     } catch (editErr) {
@@ -165,13 +165,13 @@ serve(async (req) => {
     // ── Fallback: text-only generate ──────────────────────────────────────────
     if (!imageBase64) {
       const generated = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt,
+        model: 'dall-e-3',
+        prompt: buildPrompt(age.years, child.gender, preferences),
         size: '1024x1024',
         n: 1,
+        response_format: 'b64_json',
       });
-      // gpt-image-1 always returns b64_json (no response_format param needed)
-      imageBase64 = (generated.data[0] as { b64_json?: string }).b64_json ?? null;
+      imageBase64 = generated.data[0].b64_json ?? null;
       console.log('[avatar] images.generate fallback used');
     }
 

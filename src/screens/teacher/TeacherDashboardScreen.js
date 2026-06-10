@@ -15,6 +15,9 @@ import {
 import { colors, radius, spacing, shadows } from '../../lib/colors';
 import { typography } from '../../lib/typography';
 import { useAuth } from '../../contexts/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import { uploadVideoToBunny } from '../../lib/bunny';
 import {
   getChildrenByTeacher,
   getNotifications,
@@ -144,6 +147,7 @@ export default function TeacherDashboardScreen({ navigation }) {
   const [uploadNotes,     setUploadNotes]     = useState('');
   const [uploading,       setUploading]       = useState(false);
   const [uploadProgress,  setUploadProgress]  = useState(0);
+  const [selectedVideoParams, setSelectedVideoParams] = useState(null);
 
   const loadData = useCallback(async () => {
     const teacherId = profile?.id;
@@ -164,17 +168,40 @@ export default function TeacherDashboardScreen({ navigation }) {
       // ── Students ──
       const childList = childrenRes.status === 'fulfilled' ? childrenRes.value : [];
       if (childList?.length) {
-        setStudents(childList.map(c => ({
-          id:              c.id,
-          full_name:       c.full_name,
-          nickname:        c.nickname || c.full_name.split(' ').pop(),
-          age:             c.age || 4,
-          overall_score:   c.hpdt_profiles?.[0]?.overall_score || 60,
-          level:           c.diagnostic_level || 'Mức 2 - Cần hỗ trợ đáng kể',
-          target_tasks:    5,
-          completed_tasks: 3,
-          last_session:    '19-05',
-        })));
+        setStudents(childList.map(c => {
+          const profiles = Array.isArray(c.hpdt_profiles) ? c.hpdt_profiles : (c.hpdt_profiles ? [c.hpdt_profiles] : []);
+          const latestProfile = profiles.length > 0 
+            ? profiles.reduce((latest, current) => {
+                const latestDate = new Date(latest.last_updated || latest.created_at || 0);
+                const currentDate = new Date(current.last_updated || current.created_at || 0);
+                return latestDate > currentDate ? latest : current;
+              }, profiles[0])
+            : null;
+            
+          let age = '--';
+          if (c.date_of_birth) {
+            const birthDate = new Date(c.date_of_birth);
+            const today = new Date();
+            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              calculatedAge--;
+            }
+            age = calculatedAge;
+          }
+
+          return {
+            id:              c.id,
+            full_name:       c.full_name,
+            nickname:        c.nickname || c.full_name?.split(' ').pop() || '',
+            age:             age,
+            overall_score:   latestProfile?.overall_score != null ? Math.round(latestProfile.overall_score) : '--',
+            level:           c.diagnostic_level || 'Chưa đánh giá mức độ',
+            target_tasks:    5,
+            completed_tasks: 3,
+            last_session:    '--',
+          };
+        }));
       } else {
         setStudents(MOCK_STUDENTS);
       }
@@ -228,27 +255,146 @@ export default function TeacherDashboardScreen({ navigation }) {
   // ── Handlers ──
   const handleOpenUpload = (student) => {
     setSelectedStudent(student);
+    setSelectedVideoParams(null);
     setUploadVisible(true);
   };
 
+  const pickVideo = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Từ chối quyền', 'Ứng dụng cần quyền truy cập thư viện để tải video.');
+          return;
+        }
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1,
+      });
+      
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+      
+      const asset = result.assets[0];
+    const durationSec = Math.round((asset.duration || 0) / 1000);
+    
+    if (durationSec > 0 && (durationSec < 30 || durationSec > 600)) {
+      Alert.alert('Không hợp lệ', 'Video phải có thời lượng từ 30 giây đến 10 phút.');
+      return;
+    }
+    
+    let sizeBytes = 0;
+    if (Platform.OS === 'web') {
+      sizeBytes = asset.file ? asset.file.size : (asset.size || 0);
+    } else {
+      const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+      sizeBytes = fileInfo.size || 0;
+    }
+    
+    if (sizeBytes > 500 * 1024 * 1024) {
+      Alert.alert('Không hợp lệ', 'Dung lượng video không được vượt quá 500MB.');
+      return;
+    }
+    
+    let ext = '';
+    let filename = asset.fileName || '';
+    if (Platform.OS === 'web') {
+      filename = (asset.file && asset.file.name) ? asset.file.name : (asset.name || '');
+      ext = filename.includes('.') ? filename.split('.').pop().toLowerCase() : (asset.mimeType ? asset.mimeType.split('/').pop().toLowerCase() : 'mp4');
+    } else {
+      const uriParts = asset.uri.split('.');
+      ext = uriParts[uriParts.length - 1].toLowerCase();
+    }
+    
+      if (!['mp4', 'mov', 'avi', 'mkv', 'quicktime'].includes(ext)) {
+        Alert.alert('Không hợp lệ', 'Chỉ hỗ trợ định dạng mp4, mov, avi, mkv.');
+        return;
+      }
+      
+      if (!filename) filename = `video.${ext === 'quicktime' ? 'mov' : ext}`;
+      
+      setSelectedVideoParams({
+        uri: asset.uri,
+        duration: durationSec,
+        size: sizeBytes,
+        filename: filename,
+        file: asset.file || null,
+      });
+    } catch (error) {
+      console.warn("pickVideo error:", error);
+      Alert.alert('Lỗi', 'Không thể mở thư viện video.');
+    }
+  };
+
   const handleUploadVideo = async () => {
+    if (!selectedVideoParams) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng chọn video để tải lên.');
+      return;
+    }
+    if (selectedVideoParams.duration > 0 && (selectedVideoParams.duration < 30 || selectedVideoParams.duration > 600)) {
+      Alert.alert('Không hợp lệ', 'Video phải có thời lượng từ 30 giây đến 10 phút.');
+      return;
+    }
     if (!uploadNotes.trim()) {
       Alert.alert('Thiếu thông tin', 'Vui lòng nhập ghi chú bối cảnh video.');
       return;
     }
     setUploading(true);
-    for (let p = 0; p <= 100; p += 20) {
-      await new Promise(r => setTimeout(r, 120));
-      setUploadProgress(p);
-    }
-    setUploading(false);
-    setUploadVisible(false);
-    setUploadNotes('');
     setUploadProgress(0);
-    Alert.alert(
-      'Tải lên thành công',
-      `Video của bé ${selectedStudent.full_name} đã được lưu và đưa vào hàng chờ phân tích AI.`
-    );
+    
+    try {
+      const teacherId = profile?.id || 'global';
+      const childId = selectedStudent.id;
+      const folderPath = `teachers/${teacherId}/children/${childId}/observation`;
+
+      const childInfo = {
+        childId: childId,
+        childCode: selectedStudent.legacy_id || `C${childId.substring(0, 4)}`,
+        centerCode: profile?.center_code || profile?.centers?.center_code || 'BIC-HCM',
+        type: 'observation'
+      };
+
+      const { playUrl, videoGuid, collectionId } = await uploadVideoToBunny(
+        selectedVideoParams,
+        childInfo,
+        (progress) => setUploadProgress(progress)
+      );
+
+      const { error: videoError } = await supabase
+        .from('observation_videos')
+        .insert({
+          child_id: childId,
+          uploaded_by: profile?.id,
+          uploaded_by_role: 'teacher',
+          context: uploadLocation,
+          bunny_video_url: playUrl,
+          bunny_folder_path: folderPath,
+          original_filename: selectedVideoParams.filename,
+          file_size_bytes: selectedVideoParams.size,
+          duration_seconds: selectedVideoParams.duration,
+          video_status: 'processing',
+          quality_status: 'pass',
+          child_state_log: [{ ts_sec: 0, state: uploadState, note: uploadNotes }],
+          notes: uploadNotes,
+        });
+
+      if (videoError) throw videoError;
+
+      Alert.alert(
+        'Tải lên thành công',
+        `Video của bé ${selectedStudent.full_name} đã được lưu và đưa vào hàng chờ phân tích AI.`
+      );
+      setUploadVisible(false);
+      setUploadNotes('');
+      setSelectedVideoParams(null);
+    } catch (e) {
+      Alert.alert('Lỗi', e.message || 'Không thể tải video lên.');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const toggleExpandSession = (sessionId) => {
@@ -443,6 +589,25 @@ export default function TeacherDashboardScreen({ navigation }) {
                 <TouchableOpacity onPress={() => setUploadVisible(false)} style={styles.closeBtn}>
                   <Text style={styles.closeBtnText}>✕</Text>
                 </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.textInput, { height: 60, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bgLight, borderWidth: 1, borderColor: colors.primary, borderStyle: 'dashed', marginBottom: spacing.sm }]} 
+                onPress={pickVideo}
+              >
+                <Text style={{ fontSize: 20, marginBottom: 4 }}>📁</Text>
+                <Text style={{ ...typography.caption, color: selectedVideoParams ? colors.primaryDark : colors.primary, fontWeight: '600' }}>
+                  {selectedVideoParams ? selectedVideoParams.filename : 'Nhấn để chọn Video từ thư viện'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.videoNoticeBox}>
+                <Text style={styles.videoNoticeTitle}>LƯU Ý CHO VIDEO:</Text>
+                <Text style={styles.videoNoticeText}>• Thời gian video: 30 giây - 10 phút</Text>
+                <Text style={styles.videoNoticeText}>• Chất lượng rõ nét</Text>
+                <Text style={styles.videoNoticeText}>• Ánh sáng đầy đủ</Text>
+                <Text style={styles.videoNoticeText}>• Góc quay chính diện hoặc 45 độ</Text>
+                <Text style={styles.videoNoticeText}>• Hạn chế rung lắc video</Text>
               </View>
 
               <Text style={styles.label}>Bối cảnh / Địa điểm</Text>
@@ -717,4 +882,21 @@ const styles = StyleSheet.create({
   cancelBtnText: { ...typography.btn, color: colors.textDark },
   primaryBtn: { flex: 2, backgroundColor: colors.secondary, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText:{ ...typography.btn, color: colors.white, fontWeight: '700' },
+  videoNoticeBox: {
+    backgroundColor: '#FAF5EE',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  videoNoticeTitle: {
+    ...typography.caption,
+    color: '#8A6D3B',
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  videoNoticeText: {
+    ...typography.caption,
+    color: '#8A6D3B',
+    marginBottom: 2,
+  },
 });

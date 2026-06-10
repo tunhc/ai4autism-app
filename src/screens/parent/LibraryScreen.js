@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../../contexts/AuthContext';
-import { getChildrenByParent, getObservationVideos, getVideoModelingLibrary, getChildLessons } from '../../lib/supabase';
+import { getChildrenByParent, getObservationVideos, getVideoModelingLibrary, getChildLessons, supabase } from '../../lib/supabase';
 import { colors, radius, shadows, spacing } from '../../lib/colors';
 import { typography } from '../../lib/typography';
 
@@ -180,9 +180,27 @@ export default function LibraryScreen({ navigation }) {
   const onRefresh = useCallback(() => { setRefreshing(true); loadData(); }, [loadData]);
 
   const handleDeleteVideo = (video) => {
+    const doDelete = async () => {
+        // Xóa các report liên quan trước để tránh lỗi foreign key (do DB không có ON DELETE CASCADE)
+        await supabase.from('ai_reports').delete().eq('video_id', video.id);
+        
+        const { error } = await supabase.from('observation_videos').delete().eq('id', video.id);
+        if (error) throw error;
+        setVideos(prev => prev.filter(v => v.id !== video.id));
+      } catch (err) {
+        console.error('Lỗi khi xóa video:', err);
+        const errMsg = err?.message || JSON.stringify(err) || 'Lỗi không xác định';
+        if (Platform.OS === 'web') {
+          window.alert(`Lỗi: Không thể xóa video. Chi tiết: ${errMsg}`);
+        } else {
+          Alert.alert('Lỗi', `Không thể xóa video. Chi tiết: ${errMsg}`);
+        }
+      }
+    };
+
     if (Platform.OS === 'web') {
       if (window.confirm('Bạn có chắc chắn muốn xóa video này không?')) {
-        setVideos(prev => prev.filter(v => v.id !== video.id));
+        doDelete();
       }
     } else {
       Alert.alert(
@@ -193,9 +211,7 @@ export default function LibraryScreen({ navigation }) {
           { 
             text: 'Yes', 
             style: 'destructive',
-            onPress: () => {
-              setVideos(prev => prev.filter(v => v.id !== video.id));
-            }
+            onPress: doDelete
           }
         ]
       );

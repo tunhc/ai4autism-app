@@ -44,7 +44,7 @@ Frontend:  React 18 + Vite + Tailwind (web demo)
 Mobile:    React Native + Expo
 DB:        Supabase (PostgreSQL, 33 tables, Full RLS)
 Video:     Bunny.net Stream (HLS)
-AI:        Gemini 3.5 Flash + Claude Sonnet (Enterprise)
+AI:        Gemini 2.5 Flash + Claude Sonnet (Enterprise)
 Worker:    Cloudflare Workers (quality check)
 Schedule:  pg_cron trong Supabase
 ```
@@ -80,7 +80,7 @@ App build/
 
 ## Cowork Skills có sẵn — Dùng khi cần
 
-> Rachel đã cài **Antigravity Design Plugin** + các skill chuẩn. Gọi bằng lệnh `/skill-name` trong Cowork.
+> Tôi đã cài **Antigravity Design Plugin** + các skill chuẩn. Gọi bằng lệnh `/skill-name` trong Cowork.
 
 ### Design Skills (Antigravity Plugin)
 | Skill | Khi nào dùng |
@@ -132,26 +132,6 @@ Khi chuẩn bị demo cho BI Center:
 5. **Dữ liệu trẻ: Soft delete only** — Không hard delete observation_videos, children, logs
 6. **VST upgrade: Không tự động** — Chỉ tạo đề xuất, Specialist phải confirm thủ công
 7. **Text UI: Tiếng Việt 100%** — Kể cả error messages, loading states
-
----
-
-## Trạng thái hiện tại (22/05/2026)
-
-### ✅ Đã xong
-- Database schema v5 (33 tables)
-- Seed data: 41 users, 23 children
-- Web app skeleton với routing
-- Màn hình: Login, Dashboard (mock), VideoUpload (mock), Exercises, VideoModeling, AIReport, ProgressJournal, Messages
-
-### 🔧 Đang cần làm (Phase 1)
-- Kết nối Supabase thật (thay mock data)
-- ProfileCompletion screen
-- Auth flow hoàn chỉnh với RLS verify
-
-### 📋 Tiếp theo (Phase 2)
-- Video upload → Bunny.net thật
-- AI report pipeline (Gemini)
-- Exercise session logging
 
 ---
 

@@ -46,7 +46,7 @@ export const MOCK_PROFILES = {
     id: 'd9e78c49-1de5-4c3d-b666-cf12ed6e6971',
     center_id: 'cba3c2a9-b888-47d3-a068-c5591ac3cee7',
     center_code: DEFAULT_CENTER_CODE,
-    role: 'admin',
+    role: 'parent',
     full_name: 'Admin PH',
     email: 'admin.ph@bicenter.edu.vn',
     legacy_id: 'PH_admin',
