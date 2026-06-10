@@ -181,6 +181,7 @@ export default function LibraryScreen({ navigation }) {
 
   const handleDeleteVideo = (video) => {
     const doDelete = async () => {
+      try {
         // Xóa các report liên quan trước để tránh lỗi foreign key (do DB không có ON DELETE CASCADE)
         await supabase.from('ai_reports').delete().eq('video_id', video.id);
         
