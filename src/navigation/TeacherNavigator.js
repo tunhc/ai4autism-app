@@ -15,6 +15,7 @@ import TeacherProfileScreen    from '../screens/teacher/TeacherProfileScreen';
 
 import TeacherMessagesScreen   from '../screens/teacher/TeacherMessagesScreen';
 import TeacherExercisesScreen  from '../screens/teacher/TeacherExercisesScreen';
+import AIReportScreen          from '../screens/parent/AIReportScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -38,6 +39,7 @@ function StudentStack() {
       <Stack.Screen name="LogSession"        component={LogSessionScreen} />
       <Stack.Screen name="Messages"          component={TeacherMessagesScreen} />
       <Stack.Screen name="TeacherExercises"  component={TeacherExercisesScreen} />
+      <Stack.Screen name="AIReport"          component={AIReportScreen} />
     </Stack.Navigator>
   );
 }
