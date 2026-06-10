@@ -330,15 +330,18 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   const handleUploadVideo = async () => {
     if (!selectedVideoParams) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng chọn video để tải lên.');
+      if (Platform.OS === 'web') window.alert('Thiếu thông tin: Vui lòng chọn video để tải lên.');
+      else Alert.alert('Thiếu thông tin', 'Vui lòng chọn video để tải lên.');
       return;
     }
     if (selectedVideoParams.duration > 0 && (selectedVideoParams.duration < 30 || selectedVideoParams.duration > 600)) {
-      Alert.alert('Không hợp lệ', 'Video phải có thời lượng từ 30 giây đến 10 phút.');
+      if (Platform.OS === 'web') window.alert('Không hợp lệ: Video phải có thời lượng từ 30 giây đến 10 phút.');
+      else Alert.alert('Không hợp lệ', 'Video phải có thời lượng từ 30 giây đến 10 phút.');
       return;
     }
-    if (!uploadNotes.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập ghi chú bối cảnh video.');
+    if (!uploadState) {
+      if (Platform.OS === 'web') window.alert('Thiếu thông tin: Vui lòng chọn trạng thái hiện tại của bé.');
+      else Alert.alert('Thiếu thông tin', 'Vui lòng chọn trạng thái hiện tại của bé.');
       return;
     }
     setUploading(true);
@@ -382,15 +385,21 @@ export default function TeacherDashboardScreen({ navigation }) {
 
       if (videoError) throw videoError;
 
-      Alert.alert(
-        'Tải lên thành công',
-        `Video của bé ${selectedStudent.full_name} đã được lưu và đưa vào hàng chờ phân tích AI.`
-      );
+      if (Platform.OS === 'web') {
+        window.alert(`Tải lên thành công: Video của bé ${selectedStudent.full_name} đã được lưu và đưa vào hàng chờ phân tích AI.`);
+      } else {
+        Alert.alert(
+          'Tải lên thành công',
+          `Video của bé ${selectedStudent.full_name} đã được lưu và đưa vào hàng chờ phân tích AI.`
+        );
+      }
       setUploadVisible(false);
       setUploadNotes('');
+      setUploadState('');
       setSelectedVideoParams(null);
     } catch (e) {
-      Alert.alert('Lỗi', e.message || 'Không thể tải video lên.');
+      if (Platform.OS === 'web') window.alert(`Lỗi: ${e.message || 'Không thể tải video lên.'}`);
+      else Alert.alert('Lỗi', e.message || 'Không thể tải video lên.');
     } finally {
       setUploading(false);
       setUploadProgress(0);
