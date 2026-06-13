@@ -258,14 +258,32 @@ export async function uploadVideoToBunny(selectedVideoParams, childInfo = {}, on
       };
 
       // Gửi dữ liệu nhị phân của file
-      if (fileToUpload instanceof File || fileToUpload instanceof Blob) {
+      if (file && typeof file.slice === 'function') {
+        xhr.send(file);
+      } else if (fileToUpload instanceof File || fileToUpload instanceof Blob) {
         xhr.send(fileToUpload);
       } else {
         // Nếu không có đối tượng file/blob trực tiếp, ta sẽ fetch lại blob từ URI cục bộ
         fetch(uri)
           .then(res => res.blob())
           .then(blob => xhr.send(blob))
-          .catch(err => reject(new Error(`Không thể đọc file từ uri: ${err.message}`)));
+          .catch(err => {
+            // Thử XHR fallback cho iOS Safari (nơi fetch blob URI có thể lỗi "Load failed")
+            const fallbackXhr = new XMLHttpRequest();
+            fallbackXhr.open('GET', uri, true);
+            fallbackXhr.responseType = 'blob';
+            fallbackXhr.onload = function() {
+              if (fallbackXhr.status === 200 || fallbackXhr.status === 0) {
+                xhr.send(fallbackXhr.response);
+              } else {
+                reject(new Error(`Không thể đọc file từ uri (HTTP ${fallbackXhr.status}): ${err.message}`));
+              }
+            };
+            fallbackXhr.onerror = function() {
+              reject(new Error(`Không thể đọc file từ uri: Load failed (${err.message})`));
+            };
+            fallbackXhr.send();
+          });
       }
     });
   } else {

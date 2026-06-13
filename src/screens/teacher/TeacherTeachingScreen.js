@@ -186,7 +186,18 @@ export default function TeacherTeachingScreen({ navigation }) {
       quality: 1,
     });
     if (!result.canceled) {
-      setFileFunc(result.assets[0].uri);
+      const asset = result.assets[0];
+      let filename = asset.fileName || '';
+      if (Platform.OS === 'web') {
+        filename = (asset.file && asset.file.name) ? asset.file.name : (asset.name || '');
+      }
+      if (!filename) filename = `video.mp4`;
+      
+      setFileFunc({
+        uri: asset.uri,
+        filename: filename,
+        file: asset.file || null,
+      });
     }
   };
 
@@ -204,7 +215,8 @@ export default function TeacherTeachingScreen({ navigation }) {
         centerCode: profile?.center_code || profile?.centers?.center_code || 'KBC-HCM',
         type: 'observation'
       };
-      const params = { uri: vidFile, filename: `obs_${Date.now()}.mp4` };
+      const params = { ...vidFile };
+      if (!params.filename || params.filename === 'video.mp4') params.filename = `obs_${Date.now()}.mp4`;
       
       await uploadVideoToBunny(params, childInfo, (pct) => setUploadProgress(pct));
       
@@ -235,7 +247,8 @@ export default function TeacherTeachingScreen({ navigation }) {
 
       // 2. Upload lên Bunny — collection name: {centerCode}_Training_{vstCode}
       const childInfo = { vstCode, centerCode, type: 'training' };
-      const params    = { uri: lesFile, filename: `les_${Date.now()}.mp4` };
+      const params    = { ...lesFile };
+      if (!params.filename || params.filename === 'video.mp4') params.filename = `les_${Date.now()}.mp4`;
 
       const { playUrl, videoGuid, collectionId } = await uploadVideoToBunny(params, childInfo, (pct) => setUploadProgress(pct));
 
